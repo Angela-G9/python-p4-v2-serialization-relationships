@@ -1,9 +1,8 @@
-# server/models.py
-
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 from sqlalchemy_serializer import SerializerMixin
 
+# Convention setup for database schema naming
 convention = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
@@ -14,39 +13,55 @@ convention = {
 
 metadata = MetaData(naming_convention=convention)
 
+# Initialize SQLAlchemy
 db = SQLAlchemy(metadata=metadata)
 
-
-class Zookeeper(db.Model):
+# Zookeeper model with proper serialization rules
+class Zookeeper(db.Model, SerializerMixin):
     __tablename__ = 'zookeepers'
+
+    # Serialization rules to prevent infinite recursion
+    serialize_rules = ('-animals.zookeeper',)
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, unique=True)
     birthday = db.Column(db.Date)
 
+    # Relationship with Animal model
     animals = db.relationship('Animal', back_populates='zookeeper')
 
 
-class Enclosure(db.Model):
+# Enclosure model with proper serialization rules
+class Enclosure(db.Model, SerializerMixin):
     __tablename__ = 'enclosures'
+
+    # Serialization rules to prevent infinite recursion
+    serialize_rules = ('-animals.enclosure',)
 
     id = db.Column(db.Integer, primary_key=True)
     environment = db.Column(db.String)
     open_to_visitors = db.Column(db.Boolean)
 
+    # Relationship with Animal model
     animals = db.relationship('Animal', back_populates='enclosure')
 
 
-class Animal(db.Model):
+# Animal model with proper serialization rules
+class Animal(db.Model, SerializerMixin):
     __tablename__ = 'animals'
+
+    # Serialization rules to prevent infinite recursion
+    serialize_rules = ('-zookeeper.animals', '-enclosure.animals',)
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, unique=True)
     species = db.Column(db.String)
 
+    # Foreign keys for Zookeeper and Enclosure
     zookeeper_id = db.Column(db.Integer, db.ForeignKey('zookeepers.id'))
     enclosure_id = db.Column(db.Integer, db.ForeignKey('enclosures.id'))
 
+    # Relationships to Zookeeper and Enclosure
     enclosure = db.relationship('Enclosure', back_populates='animals')
     zookeeper = db.relationship('Zookeeper', back_populates='animals')
 
